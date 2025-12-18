@@ -1,9 +1,15 @@
-name: Reusable_Work_flowBuild & Deploy Docker Image to ACR and ACA
+name: Reusable Workflow Build & Deploy Docker Image to ACR and ACA
 
 on:
     push:
         branches:
             - main
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    id-token: write
+
 jobs:
     build-and-deploy:
         environment: dev
