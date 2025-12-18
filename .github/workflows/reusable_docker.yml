@@ -12,6 +12,7 @@ permissions:
 
 jobs:
     build-and-deploy:
+        environment: dev
         uses: ./.github/workflows/reusable.yml
         secrets:
             AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
