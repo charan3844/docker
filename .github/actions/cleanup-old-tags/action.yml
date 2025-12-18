@@ -22,7 +22,7 @@ runs:
             echo "Deleting $TAG"
             az acr repository delete \
               --name ${{ env.ACR_NAME }} \
-              --repository ${{ env.REPO }} \
-              --tag $TAG --yes
+              --image ${{ env.REPO }}:$TAG \
+              --yes
           fi
         done
