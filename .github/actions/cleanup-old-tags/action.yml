@@ -23,6 +23,6 @@ runs:
             az acr repository delete \
               --name ${{ env.ACR_NAME }} \
               --image ${{ env.REPO }}:$TAG \
-              --yes
+              --yes || echo "Tag $TAG already deleted or not found, skipping..."
           fi
         done

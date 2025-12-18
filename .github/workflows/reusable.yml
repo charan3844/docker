@@ -107,7 +107,7 @@ jobs:
               az acr repository delete \
                 --name ${{ secrets.ACR_NAME }} \
                 --image ${{ secrets.REPO }}:$TAG \
-                --yes
+                --yes || echo "Tag $TAG already deleted or not found, skipping..."
             fi
           done
 
