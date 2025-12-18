@@ -1,0 +1,24 @@
+name: Backup existing tag
+description: Creates a backup of the current latest tag before updating
+
+runs:
+  using: composite
+  steps:
+    - name: Backup existing tag
+      shell: bash
+      run: |
+        echo "Checking if tag exists..."
+        EXISTS=$(az acr repository show-tags \
+          --name ${{ env.ACR_NAME }} \
+          --repository ${{ env.REPO }} \
+          --query "[?(@=='latest')]" -o tsv)
+
+        if [ -n "$EXISTS" ]; then
+          echo "Tag exists. Creating backup tag build-${{ github.run_id }}..."
+          az acr import \
+            --name ${{ env.ACR_NAME }} \
+            --source ${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}:latest \
+            --image ${{ env.REPO }}:build-${{ github.run_id }}
+        else
+          echo "Tag not found. Skipping backup."
+        fi
