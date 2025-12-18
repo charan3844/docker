@@ -13,8 +13,6 @@ permissions:
 jobs:
     build-and-deploy:
         uses: ./.github/workflows/reusable.yml
-        with:
-            environment: dev
         secrets:
             AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
             AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
