@@ -1,11 +1,9 @@
-name: Build & Deploy Docker Image to ACR and ACA
+name: Reusable_Build & Deploy Docker Image to ACR and ACA
 
 on:
     push:
         branches:
             - main
-    workflow_dispatch:
-
 jobs:
     build-and-deploy:
         uses: ./.github/workflows/reusable.yml
