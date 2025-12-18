@@ -106,8 +106,8 @@ jobs:
               echo "Deleting $TAG"
               az acr repository delete \
                 --name ${{ secrets.ACR_NAME }} \
-                --repository ${{ secrets.REPO }} \
-                --tag $TAG --yes
+                --image ${{ secrets.REPO }}:$TAG \
+                --yes
             fi
           done
 
