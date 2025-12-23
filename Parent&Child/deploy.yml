@@ -1,0 +1,42 @@
+name: Deploy to ACA - Child Workflow
+
+on:
+    workflow_call:
+        secrets:
+            AZURE_CLIENT_ID:
+                required: true
+            AZURE_TENANT_ID:
+                required: true
+            AZURE_SUBSCRIPTION_ID:
+                required: true
+            ACA_NAME:
+                required: true
+            ACA_RG:
+                required: true
+
+jobs:
+    deploy-aca:
+        runs-on: ubuntu-latest
+        environment: dev
+        permissions:
+            contents: read
+            id-token: write
+        env:
+            ACA_NAME: ${{ secrets.ACA_NAME }}
+            ACA_RG: ${{ secrets.ACA_RG }}
+            REPO: ${{ secrets.REPO }}
+            ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: Update Azure Container App
+              uses: ./.github/actions/update-aca
