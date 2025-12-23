@@ -1,21 +1,23 @@
-name: Build & Deploy Docker Image to ACR and ACA
+name: Build Docker Image - Child Workflow
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-env:
-  ACR_NAME: ${{ secrets.ACR_NAME }}
-  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-  REPO: ${{ secrets.REPO }}
-  ACA_NAME: ${{ secrets.ACA_NAME }}
-  ACA_RG: ${{ secrets.ACA_RG }}
-  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  workflow_call:
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      ACR_NAME:
+        required: true
+      ACR_LOGIN_SERVER:
+        required: true
+      REPO:
+        required: true
 
 jobs:
-  build-and-push:
+  build-docker:
     runs-on: ubuntu-latest
     environment: dev
     permissions:
@@ -47,6 +49,3 @@ jobs:
 
       - name: Cleanup old build tags
         uses: ./.github/actions/cleanup-old-tags
-
-      - name: Update Azure Container App
-        uses: ./.github/actions/update-aca

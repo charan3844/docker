@@ -562,5 +562,46 @@ For multiple teams (Team A, Team B, Team C):
 
 ---
 
+## 📌 Conversation: Workflow File Placement & YAML Location (December 23, 2025)
+
+### Questions Asked:
+1. **Should the YML file be under the workflows folder?**
+   - ✅ **Yes, it's MANDATORY**
+   - GitHub Actions only discovers and executes workflow files in `.github/workflows/`
+   - This is the designated directory for GitHub Actions workflows
+
+2. **Is this placement mandatory?**
+   - ✅ **Yes, absolutely mandatory**
+   - Without the correct location, GitHub won't detect or execute the workflow
+   - Files in other locations won't trigger automatically on events
+
+3. **Can I place YAML outside of workflows folder?**
+   - ❌ **No, it won't work as a standalone workflow**
+   - Files outside `.github/workflows/` won't auto-run
+   - **Exception**: You can place reusable workflows or composite actions elsewhere (e.g., `.github/actions/`) but they must be explicitly called from a workflow file in `.github/workflows/`
+
+### What is a Workflow?
+
+A **workflow** is essentially a **pipeline** (similar to Azure DevOps pipelines):
+- An automated process triggered by events (push, pull request, schedule, manual trigger, etc.)
+- Contains jobs with steps (commands to execute)
+- Runs automatically when conditions are met
+
+### Key Scenarios:
+
+| Scenario | Location | Works? | Details |
+|----------|----------|--------|---------|
+| Auto-run workflow on push | `.github/workflows/` | ✅ Yes | GitHub detects and executes automatically |
+| Standalone YAML file | `.github/actions/` or other | ❌ No | Won't auto-run unless called |
+| Composite action/reusable workflow | `.github/actions/` | ✅ Yes (if called) | Must be explicitly referenced with `uses:` |
+| Local script execution | Outside repo | ✅ Yes | Can run manually, but not via GitHub Actions |
+
+### Summary:
+- **Only files in `.github/workflows/` will automatically run as pipelines**
+- Other YAML files can exist but must be called explicitly from a workflow
+- If you want GitHub to auto-execute your script on events, it **must be in `.github/workflows/`**
+
+---
+
 **End of Conversation History**  
-*Last Updated: December 19, 2025*
+*Last Updated: December 23, 2025*
