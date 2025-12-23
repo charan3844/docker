@@ -603,5 +603,55 @@ A **workflow** is essentially a **pipeline** (similar to Azure DevOps pipelines)
 
 ---
 
+## 🧩 Update: Parent–Child Workflows & ACR Login Fix (December 23, 2025)
+
+### Changes Implemented
+- Created parent–child reusable workflows:
+   - `main.yml` (parent) triggers `build.yml` then `deploy.yml` with `needs:`
+   - `build.yml` handles ACR login, backup, build, push, cleanup
+   - `deploy.yml` updates Azure Container App
+- Fixed ACR login error (`argument --name expected one argument`) by passing required envs in child jobs:
+   - In `build.yml`: `ACR_NAME`, `REPO`
+   - In `deploy.yml`: `ACA_NAME`, `ACA_RG`, `REPO`, `ACR_LOGIN_SERVER`
+- Confirmed `secrets: inherit` so children receive repo/environment secrets from parent
+
+### Clarification: Workflow vs “Manual YAML”
+- Use a workflow (file in `.github/workflows/`) for CI/CD and manual runs via `workflow_dispatch`
+- YAML outside `.github/workflows/` won’t auto-run; use as composite actions or run scripts locally
+
+### Current Entry Points
+- Parent workflow: `.github/workflows/main.yml`
+- Child workflows: `.github/workflows/build.yml`, `.github/workflows/deploy.yml`
+- Composite actions used via `uses`: `./.github/actions/...`
+
+---
+
+## 🧭 Why & When: Parent–Child Workflows (December 23, 2025)
+
+### Why Use Parent–Child Workflows
+- **Orchestration:** Parent coordinates phases (build → test → deploy) with `needs:` for ordering.
+- **Reuse:** Child workflows (`on: workflow_call`) can be invoked by multiple parents/repos.
+- **Isolation:** Each child has its own runner, permissions, and environment protections.
+- **Governance:** Easier to enforce approvals and rules per phase (e.g., deploy approval).
+- **Maintainability:** Shared children maintained once; parents stay thin per app.
+
+### When To Use Them
+- **Multi‑phase pipelines:** Separate concerns (e.g., `build.yml` vs `deploy.yml`) with clear gates.
+- **Cross‑repo reuse:** Common CI blocks (build, scan) reused via `uses:`.
+- **Environment‑specific flows:** Distinct children for `dev`, `staging`, `prod` with their secrets/approvals.
+- **Optional paths / matrices:** Parent conditionally calls children or fans out to multiple services.
+- **Compliance gates:** Security/quality children must pass before deploy.
+
+### When Composite Actions Are Enough
+- **Step‑level reuse:** Share a sequence of steps inside one job (no separate triggers/jobs/approvals).
+- **Single‑repo simplicity:** One pipeline with minimal governance needs.
+
+### Current Setup (This Repo)
+- **Parent:** `.github/workflows/main.yml` — entrypoint, triggers, orchestrates children.
+- **Children:** `.github/workflows/build.yml`, `.github/workflows/deploy.yml` — reusable, each with its own job/env.
+- **Composite actions:** `./.github/actions/acr-login`, `backup-tag`, `build-docker-image`, `push-docker-image`, `cleanup-old-tags`, `update-aca`.
+
+---
+
 **End of Conversation History**  
 *Last Updated: December 23, 2025*
