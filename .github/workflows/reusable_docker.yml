@@ -14,12 +14,4 @@ jobs:
     build-and-deploy:
         environment: dev
         uses: ./.github/workflows/reusable.yml
-        secrets:
-            AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-            AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-            AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-            ACR_NAME: ${{ secrets.ACR_NAME }}
-            ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
-            REPO: ${{ secrets.REPO }}
-            ACA_NAME: ${{ secrets.ACA_NAME }}
-            ACA_RG: ${{ secrets.ACA_RG }}
+        secrets: inherit
