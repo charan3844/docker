@@ -29,6 +29,13 @@ your-repo/
 └── ... (other repo files)
 ```
 
+### ℹ️ Important: Repo Root & Workflow Discovery
+- GitHub Actions only detects workflows from the repository root path `.github/workflows`.
+- A `.github` folder inside any subfolder (for example, `Composite-Actions/.github`) is not scanned by the parent repo’s Actions.
+- Local composite actions referenced with `uses: ./.github/actions/...` must reside at the root `.github/actions` (or be exposed there).
+- Inner folders are not separate repo roots unless they contain their own `.git`. If an inner folder has `.git`, it is a different repository; the parent repo’s Actions will not see its workflows.
+- If you keep your workflow/action sources in a subfolder, expose them at the root (e.g., by copying or using OS directory junctions) so GitHub can discover them.
+
 ---
 
 ## 🔧 Basic Composite Action Syntax
