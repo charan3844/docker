@@ -130,7 +130,7 @@ jobs:
 
 ---
 
-## ✅ Your Docker Example
+## Your Docker Example
 
 For your Docker setup, you could create:
 
