@@ -1,6 +1,16 @@
 name: Build Docker image
 description: Builds the Docker image with build metadata
 
+inputs:
+  context:
+    description: Docker build context directory
+    required: false
+    default: "Composite Actions/MCPAgent"
+  dockerfile:
+    description: Path to Dockerfile
+    required: false
+    default: "Composite Actions/MCPAgent/dockerfile"
+
 runs:
   using: composite
   steps:
@@ -10,10 +20,10 @@ runs:
         BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
         docker build \
-          -f MCPAgent/dockerfile \
+          -f "${{ inputs.dockerfile }}" \
           --label build_time=$BUILD_TIME \
           --label git_sha=${{ github.sha }} \
-          -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}:latest \
-          MCPAgent
+          -t "${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}:latest" \
+          "${{ inputs.context }}"
 
         docker images
