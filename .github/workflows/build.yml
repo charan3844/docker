@@ -1,4 +1,4 @@
-name: Team A – Build & Deploy
+name: Team A – Build
 
 on:
     push:

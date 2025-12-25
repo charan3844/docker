@@ -1,8 +1,8 @@
-name: Team B – Build & Deploy
+name: Team B - Deploy
 
 on:
   push:
-    branches: [release]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
