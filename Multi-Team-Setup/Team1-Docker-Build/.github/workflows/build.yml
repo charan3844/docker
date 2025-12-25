@@ -1,0 +1,61 @@
+name: TEAM 1 - Build Docker Image for MCP
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "MCPAgent/**"
+            - ".github/workflows/build.yml"
+    workflow_dispatch:
+
+env:
+    REGISTRY: tlcaimcpacr.azurecr.io
+    IMAGE_NAME: mcp
+    DOCKERFILE: MCPAgent/dockerfile
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        name: Build Docker Image
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set Image Tag
+              run: |
+                  echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+                  echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
+
+            - name: Build Docker Image
+              uses: ./Shared-Composite-Actions/.github/actions/build-docker-image
+              with:
+                  dockerfile-path: ${{ env.DOCKERFILE }}
+                  image-name: ${{ env.IMAGE_NAME }}
+                  image-tag: ${{ env.IMAGE_TAG }}
+                  build-context: .
+
+            - name: Inspect Built Image
+              run: |
+                  docker images | grep ${{ env.IMAGE_NAME }}
+                  docker history ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} | head -10
+
+            - name: Test Image Locally
+              run: |
+                  echo "Testing Docker image..."
+                  docker run --rm ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} python --version
+
+            - name: Create Build Summary
+              run: |
+                  echo "## ✅ Build Successful" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Image Name**: ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Build Date**: ${{ env.BUILD_DATE }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Dockerfile**: ${{ env.DOCKERFILE }}" >> $GITHUB_STEP_SUMMARY
+
+        outputs:
+            image-name: ${{ env.IMAGE_NAME }}
+            image-tag: ${{ env.IMAGE_TAG }}

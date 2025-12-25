@@ -18,7 +18,7 @@ env:
 jobs:
   # Parent job that calls child workflows sequentially
   call-build-workflow:
-    uses: ./.github/workflows/build.yml
+    uses: ./.github/workflows/build.yml@main
     secrets: inherit
     permissions:
       contents: read
@@ -26,7 +26,7 @@ jobs:
 
   call-deploy-workflow:
     needs: call-build-workflow
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy.yml@main
     secrets: inherit
     permissions:
       contents: read

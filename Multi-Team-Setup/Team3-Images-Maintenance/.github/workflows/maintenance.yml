@@ -1,0 +1,102 @@
+name: TEAM 3 - Cleanup & Maintain Old Images
+
+on:
+    schedule:
+        # Every Sunday at 2 AM UTC
+        - cron: "0 2 * * 0"
+    workflow_dispatch:
+        inputs:
+            keep-count:
+                description: "Number of images to keep"
+                required: false
+                default: "10"
+            older-than-days:
+                description: "Delete images older than X days"
+                required: false
+                default: "30"
+
+env:
+    ACR_LOGIN_SERVER: tlcaimcpacr.azurecr.io
+    IMAGE_NAME: mcp
+    BACKUP_LOCATION: ./backups
+
+jobs:
+    backup-and-cleanup:
+        runs-on: ubuntu-latest
+        name: Backup & Cleanup Images
+
+        permissions:
+            contents: read
+            id-token: write
+
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: ACR Login
+              uses: ./Shared-Composite-Actions/.github/actions/acr-login
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+
+            - name: Backup Current Image Tags
+              uses: ./Shared-Composite-Actions/.github/actions/backup-tag
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+                  repo: ${{ env.IMAGE_NAME }}
+                  backup-location: ${{ env.BACKUP_LOCATION }}
+
+            - name: Upload Backup Artifact
+              uses: actions/upload-artifact@v3
+              with:
+                  name: acr-backup-${{ github.run_number }}
+                  path: ${{ env.BACKUP_LOCATION }}
+                  retention-days: 90
+
+            - name: Cleanup Old Images
+              uses: ./Shared-Composite-Actions/.github/actions/cleanup-old-images
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+                  repo: ${{ env.IMAGE_NAME }}
+                  keep-count: ${{ github.event.inputs.keep-count || '10' }}
+                  older-than-days: ${{ github.event.inputs.older-than-days || '30' }}
+
+            - name: Generate Cleanup Report
+              if: always()
+              run: |
+                  ACR_NAME=$(echo ${{ env.ACR_LOGIN_SERVER }} | cut -d. -f1)
+
+                  echo "## Cleanup Report" > cleanup-report.md
+                  echo "**Date**: $(date)" >> cleanup-report.md
+                  echo "**Repository**: ${{ env.IMAGE_NAME }}" >> cleanup-report.md
+                  echo "" >> cleanup-report.md
+                  echo "### Remaining Images" >> cleanup-report.md
+
+                  az acr repository show-tags \
+                    --name $ACR_NAME \
+                    --repository ${{ env.IMAGE_NAME }} \
+                    --orderby time_desc \
+                    --output table >> cleanup-report.md
+
+            - name: Upload Cleanup Report
+              uses: actions/upload-artifact@v3
+              if: always()
+              with:
+                  name: cleanup-report-${{ github.run_number }}
+                  path: cleanup-report.md
+                  retention-days: 30
+
+            - name: Create Maintenance Summary
+              run: |
+                  echo "## ✅ Maintenance Completed" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Repository**: ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Backup**: Created at ${{ env.BACKUP_LOCATION }}" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Cleanup**: Removed old images older than 30 days" >> $GITHUB_STEP_SUMMARY
+                  echo "- **Kept**: Latest 10 images" >> $GITHUB_STEP_SUMMARY
