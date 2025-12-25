@@ -1,0 +1,74 @@
+name: Shared Docker Build & Deploy (ACR + ACA)
+
+on:
+    workflow_call:
+        inputs:
+            environment:
+                required: true
+                type: string
+            image_tag:
+                required: false
+                type: string
+                default: latest
+        secrets:
+            AZURE_CLIENT_ID:
+                required: true
+            AZURE_TENANT_ID:
+                required: true
+            AZURE_SUBSCRIPTION_ID:
+                required: true
+            ACR_NAME:
+                required: true
+            ACR_LOGIN_SERVER:
+                required: true
+            REPO:
+                required: true
+            ACA_NAME:
+                required: true
+            ACA_RG:
+                required: true
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        environment: ${{ inputs.environment }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+            - name: Login to ACR
+              run: az acr login --name ${{ secrets.ACR_NAME }}
+
+            - name: Build Docker image
+              run: |
+                  BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+                  docker build \
+                    -f MCPAgent/Dockerfile \
+                    --label build_time=$BUILD_TIME \
+                    --label git_sha=${GITHUB_SHA} \
+                    -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:${{ inputs.image_tag }} \
+                    MCPAgent
+
+            - name: Push Docker image
+              run: |
+                  docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:${{ inputs.image_tag }}
+
+            - name: Update Azure Container App
+              run: |
+                  az containerapp update \
+                    --name ${{ secrets.ACA_NAME }} \
+                    --resource-group ${{ secrets.ACA_RG }} \
+                    --image ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:${{ inputs.image_tag }}
