@@ -1,59 +1,28 @@
-name: "Cleanup Old Docker Images"
-description: "Remove old Docker images from ACR based on retention policy"
-
-inputs:
-  acr-login-server:
-    description: "ACR login server"
-    required: true
-  repo:
-    description: "Repository name in ACR"
-    required: true
-  keep-count:
-    description: "Number of images to keep"
-    required: false
-    default: "10"
-  older-than-days:
-    description: "Delete images older than X days"
-    required: false
-    default: "30"
+name: Cleanup old build tags
+description: Removes old backup build tags, keeping only the 10 most recent
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Cleanup Old Images
+    - name: Cleanup old build tags
       shell: bash
       run: |
-        ACR_NAME=$(echo ${{ inputs.acr-login-server }} | cut -d. -f1)
-        REPO=${{ inputs.repo }}
-        KEEP_COUNT=${{ inputs.keep-count }}
-        OLDER_THAN_DAYS=${{ inputs.older-than-days }}
-
-        echo "Fetching all tags for $REPO..."
         TAGS=$(az acr repository show-tags \
-          --name $ACR_NAME \
-          --repository $REPO \
-          --orderby time_desc \
-          --output tsv)
+          --name ${{ env.ACR_NAME }} \
+          --repository ${{ env.REPO }} \
+          --query "[?starts_with(@, 'build-')]" \
+          -o tsv | sort -r)
 
-        echo "Current tags:"
-        echo "$TAGS"
-
-        TAG_COUNT=0
-        DELETED_COUNT=0
-
-        while IFS= read -r TAG; do
-          TAG_COUNT=$((TAG_COUNT + 1))
-          
-          if [ $TAG_COUNT -gt $KEEP_COUNT ]; then
-            echo "Deleting old image: $REPO:$TAG"
+        COUNT=0
+        for TAG in $TAGS; do
+          COUNT=$((COUNT+1))
+          if [ $COUNT -le 10 ]; then
+            echo "Keeping $TAG"
+          else
+            echo "Deleting $TAG"
             az acr repository delete \
-              --name $ACR_NAME \
-              --image $REPO:$TAG \
-              --yes
-            DELETED_COUNT=$((DELETED_COUNT + 1))
+              --name ${{ env.ACR_NAME }} \
+              --image ${{ env.REPO }}:$TAG \
+              --yes || echo "Tag $TAG already deleted or not found, skipping..."
           fi
-        done <<< "$TAGS"
-
-        echo "✅ Cleanup completed!"
-        echo "Kept: $KEEP_COUNT images"
-        echo "Deleted: $DELETED_COUNT images"
+        done
