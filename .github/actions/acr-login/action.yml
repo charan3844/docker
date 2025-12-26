@@ -1,13 +1,28 @@
-name: Login to ACR
-description: Authenticates with Azure Container Registry
+name: "ACR Login"
+description: "Login to Azure Container Registry"
+
+inputs:
+  acr-login-server:
+    description: "ACR login server (e.g., myacr.azurecr.io)"
+    required: true
+  acr-username:
+    description: "ACR username (optional if using Azure CLI auth)"
+    required: false
+  acr-password:
+    description: "ACR password (optional if using Azure CLI auth)"
+    required: false
 
 runs:
-  using: composite
+  using: "composite"
   steps:
     - name: Login to ACR
       shell: bash
       run: |
-        az acr login --name ${{ env.ACR_NAME }}
-        LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query "loginServer" -o tsv)
-        echo "ACR_LOGIN_SERVER=$LOGIN_SERVER" >> $GITHUB_ENV
-        echo "ACR login successful"
+        if [ -z "${{ inputs.acr-username }}" ]; then
+          echo "Using Azure CLI authentication..."
+          az acr login --name $(echo ${{ inputs.acr-login-server }} | cut -d. -f1)
+        else
+          echo "Using username/password authentication..."
+          echo ${{ inputs.acr-password }} | docker login -u ${{ inputs.acr-username }} --password-stdin ${{ inputs.acr-login-server }}
+        fi
+        echo "✅ ACR Login successful!"
