@@ -1,45 +1,36 @@
-name: "Backup Docker Image Tags"
-description: "Backup current Docker image tags from ACR"
-
-inputs:
-  acr-login-server:
-    description: "ACR login server"
-    required: true
-  repo:
-    description: "Repository name in ACR"
-    required: true
-  backup-location:
-    description: "Backup file location"
-    required: false
-    default: "./acr-backup"
-
-outputs:
-  backup-file:
-    description: "Path to backup file"
-    value: ${{ steps.backup.outputs.backup-file }}
+name: Backup existing tag
+description: Creates a backup of the current latest tag before updating
 
 runs:
-  using: "composite"
+  using: composite
   steps:
-    - name: Create Backup Directory
+    - name: Backup existing tag
       shell: bash
       run: |
-        mkdir -p ${{ inputs.backup-location }}
-        echo "Backup directory created"
+        echo "Checking if tag exists..."
+        EXISTS=$(az acr repository show-tags \
+          --name ${{ env.ACR_NAME }} \
+          --repository ${{ env.REPO }} \
+          --query "[?(@=='latest')]" -o tsv)
 
-    - name: Backup Image Tags
-      id: backup
-      shell: bash
-      run: |
-        BACKUP_FILE="${{ inputs.backup-location }}/backup-${{ inputs.repo }}-$(date +%Y%m%d-%H%M%S).json"
-
-        echo "Fetching all tags for ${{ inputs.repo }}..."
-        az acr repository show-tags \
-          --name $(echo ${{ inputs.acr-login-server }} | cut -d. -f1) \
-          --repository ${{ inputs.repo }} \
-          --output json > $BACKUP_FILE
-
-        echo "backup-file=$BACKUP_FILE" >> $GITHUB_OUTPUT
-        echo "✅ Backup completed: $BACKUP_FILE"
-        echo "Tags backed up:"
-        cat $BACKUP_FILE
+        if [ -n "$EXISTS" ]; then
+          BACKUP_TAG="build-${{ github.run_id }}"
+          
+          # Check if backup tag already exists
+          BACKUP_EXISTS=$(az acr repository show-tags \
+            --name ${{ env.ACR_NAME }} \
+            --repository ${{ env.REPO }} \
+            --query "[?(@=='$BACKUP_TAG')]" -o tsv)
+          
+          if [ -z "$BACKUP_EXISTS" ]; then
+            echo "Tag exists. Creating backup tag $BACKUP_TAG..."
+            az acr import \
+              --name ${{ env.ACR_NAME }} \
+              --source ${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}:latest \
+              --image ${{ env.REPO }}:$BACKUP_TAG
+          else
+            echo "Backup tag $BACKUP_TAG already exists. Skipping backup."
+          fi
+        else
+          echo "Tag not found. Skipping backup."
+        fi
