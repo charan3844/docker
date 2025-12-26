@@ -1,0 +1,96 @@
+name: Docker Build and Deploy to ACR
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    workflow_dispatch:
+        inputs:
+            cleanup-old-images:
+                description: "Run cleanup of old images"
+                required: false
+                type: boolean
+                default: false
+
+env:
+    ACR_NAME: ${{ secrets.ACR_NAME }}
+    ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+    AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    IMAGE_NAME: ${{ secrets.REPO }}
+    DOCKERFILE_PATH: MCPAgent/Dockerfile
+    BUILD_CONTEXT: MCPAgent
+
+jobs:
+    build-and-push:
+        name: Build and Push Docker Image
+        runs-on: ubuntu-latest
+
+        outputs:
+            image-url: ${{ steps.push.outputs.acr-image-url }}
+            image-tag: ${{ steps.set-tag.outputs.tag }}
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Set Image Tag
+              id: set-tag
+              run: |
+                  if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+                    TAG="pr-${{ github.event.pull_request.number }}"
+                  else
+                    TAG="latest"
+                  fi
+                  echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+            - name: Azure Login
+              uses: azure/login@v1
+              with:
+                  client-id: ${{ secrets.AZURE_CLIENT_ID }}
+                  tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+                  subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+            - name: Login to ACR
+              uses: ./.github/actions/acr-login
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+
+            - name: Prepare backup directory
+              if: github.event_name != 'pull_request'
+              run: mkdir -p acr-backup
+
+            - name: Backup Current Tags
+              if: github.event_name != 'pull_request'
+              uses: ./.github/actions/backup-tag
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+                  repo: ${{ env.IMAGE_NAME }}
+                  backup-location: ./acr-backup
+
+            - name: Build Docker Image
+              uses: ./.github/actions/build-docker-image
+              with:
+                  dockerfile-path: ${{ env.DOCKERFILE_PATH }}
+                  image-name: ${{ env.IMAGE_NAME }}
+                  image-tag: ${{ steps.set-tag.outputs.tag }}
+                  build-context: ${{ env.BUILD_CONTEXT }}
+
+            - name: Push to ACR
+              if: github.event_name != 'pull_request'
+              id: push
+              uses: ./.github/actions/push-docker-image
+              with:
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+                  image-name: ${{ env.IMAGE_NAME }}
+                  image-tag: ${{ steps.set-tag.outputs.tag }}
+
+            - name: Upload Backup
+              if: github.event_name != 'pull_request'
+              uses: actions/upload-artifact@v4
+              with:
+                  name: acr-backup-${{ github.run_id }}
+                  path: ./acr-backup/
+                  retention-days: 30
