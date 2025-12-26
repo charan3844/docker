@@ -111,8 +111,8 @@ jobs:
         environment: dev
         needs: build-and-push
         if: |
-            github.event_name == 'workflow_dispatch' &&
-            github.event.inputs.cleanup-old-images == 'true'
+            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            (github.event_name == 'workflow_dispatch' && github.event.inputs.cleanup-old-images == 'true')
 
         steps:
             - name: Checkout Repository
