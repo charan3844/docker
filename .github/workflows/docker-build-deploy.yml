@@ -35,7 +35,7 @@ jobs:
     build-and-push:
         name: Build and Push Docker Image
         runs-on: ubuntu-latest
-        environment: Dev
+        environment: dev
 
         outputs:
             image-url: ${{ steps.push.outputs.acr-image-url }}
@@ -115,7 +115,7 @@ jobs:
     cleanup:
         name: Cleanup Old Images
         runs-on: ubuntu-latest
-        environment: Dev
+        environment: dev
         needs: build-and-push
         if: |
             github.event_name == 'workflow_dispatch' &&
