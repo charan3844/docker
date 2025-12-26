@@ -27,7 +27,7 @@ env:
     AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     # Image details
-    IMAGE_NAME: ${{ secrets.REPO }}
+    REPO: ${{ secrets.REPO }}
     DOCKERFILE_PATH: MCPAgent/Dockerfile
     BUILD_CONTEXT: MCPAgent
 
@@ -70,8 +70,6 @@ jobs:
             # 4. Login to ACR (Shared Composite Action)
             - name: Login to ACR
               uses: ./.github/actions/acr-login
-              with:
-                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
 
             # 5. Prepare Backup Directory (non-PR only)
             - name: Prepare backup directory
@@ -84,18 +82,13 @@ jobs:
               uses: ./.github/actions/backup-tag
               with:
                   acr-name: ${{ env.ACR_NAME }}
-                  repo: ${{ env.IMAGE_NAME }}
+                  repo: ${{ env.REPO }}
                   backup-location: ./acr-backup
 
             # 7. Build Docker Image
             - name: Build Docker Image
               id: build
               uses: ./.github/actions/build-docker-image
-              with:
-                  dockerfile-path: ${{ env.DOCKERFILE_PATH }}
-                  image-name: ${{ env.IMAGE_NAME }}
-                  image-tag: ${{ steps.set-tag.outputs.tag }}
-                  build-context: ${{ env.BUILD_CONTEXT }}
 
             # 8. Push Image (non-PR only)
             - name: Push to ACR
@@ -141,7 +134,7 @@ jobs:
               uses: ./.github/actions/cleanup-old-images
               with:
                   acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
-                  repo: ${{ env.IMAGE_NAME }}
+                  repo: ${{ env.REPO }}
                   keep-count: "10"
                   older-than-days: "30"
 
@@ -155,7 +148,7 @@ jobs:
             - name: Build Status
               run: |
                   echo "Build Result: ${{ needs.build-and-push.result }}"
-                  echo "Image URL: ${{ needs.build-and-push.outputs.image-url }}"
+                  echo "Image URL: ${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}"
                   echo "Image Tag: ${{ needs.build-and-push.outputs.image-tag }}"
 
             - name: Cleanup Status
