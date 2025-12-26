@@ -59,19 +59,20 @@ jobs:
                   echo "tag=$TAG" >> $GITHUB_OUTPUT
                   echo "Using tag: $TAG"
 
-            # 3. Azure Login (OIDC)
+            # 3. Azure Login
             - name: Azure Login
               uses: azure/login@v1
               with:
                   client-id: ${{ secrets.AZURE_CLIENT_ID }}
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                  client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
             # 4. Login to ACR (Shared Composite Action)
             - name: Login to ACR
               uses: ./.github/actions/acr-login
               with:
-                  acr-name: ${{ env.ACR_NAME }}
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
 
             # 5. Prepare Backup Directory (non-PR only)
             - name: Prepare backup directory
@@ -136,11 +137,12 @@ jobs:
                   client-id: ${{ secrets.AZURE_CLIENT_ID }}
                   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
                   subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                  client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
 
             - name: Login to ACR
               uses: ./.github/actions/acr-login
               with:
-                  acr-name: ${{ env.ACR_NAME }}
+                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
 
             - name: Cleanup Old Images
               uses: ./.github/actions/cleanup-old-images
