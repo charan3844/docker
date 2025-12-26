@@ -1,0 +1,128 @@
+name: Reusable Docker Build and Deploy Workflow
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+        description: Azure Client ID for authentication
+      AZURE_TENANT_ID:
+        required: true
+        description: Azure Tenant ID
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+        description: Azure Subscription ID
+      ACR_NAME:
+        required: true
+        description: Azure Container Registry name
+      ACR_LOGIN_SERVER:
+        required: true
+        description: ACR login server URL
+      REPO:
+        required: true
+        description: Repository name in ACR
+      ACA_NAME:
+        required: true
+        description: Azure Container App name
+      ACA_RG:
+        required: true
+        description: Azure Container App resource group
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        shell: bash
+        run: |
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Backup existing tag
+        shell: bash
+        run: |
+          echo "Checking if tag exists..."
+          EXISTS=$(az acr repository show-tags \
+            --name ${{ secrets.ACR_NAME }} \
+            --repository ${{ secrets.REPO }} \
+            --query "[?(@=='latest')]" -o tsv)
+
+          if [ -n "$EXISTS" ]; then
+            echo "Tag exists. Creating backup tag build-${{ github.run_id }}..."
+            az acr import \
+              --name ${{ secrets.ACR_NAME }} \
+              --source ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:latest \
+              --image ${{ secrets.REPO }}:build-${{ github.run_id }}
+          else
+            echo "Tag not found. Skipping backup."
+          fi
+
+      - name: Build Docker image
+        shell: bash
+        run: |
+          BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          docker build \
+            -f MCPAgent/Dockerfile \
+            --label build_time=$BUILD_TIME \
+            --label git_sha=${{ github.sha }} \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:latest \
+            MCPAgent
+
+          docker images
+
+      - name: Push Docker image
+        shell: bash
+        run: |
+          echo "Pushing image to ACR..."
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:latest
+
+      - name: Cleanup old build tags
+        shell: bash
+        run: |
+          TAGS=$(az acr repository show-tags \
+            --name ${{ secrets.ACR_NAME }} \
+            --repository ${{ secrets.REPO }} \
+            --query "[?starts_with(@, 'build-')]" \
+            -o tsv | sort -r)
+
+          COUNT=0
+          for TAG in $TAGS; do
+            COUNT=$((COUNT+1))
+            if [ $COUNT -le 10 ]; then
+              echo "Keeping $TAG"
+            else
+              echo "Deleting $TAG"
+              az acr repository delete \
+                --name ${{ secrets.ACR_NAME }} \
+                --image ${{ secrets.REPO }}:$TAG \
+                --yes || echo "Tag $TAG already deleted or not found, skipping..."
+            fi
+          done
+
+      - name: Update Azure Container App
+        shell: bash
+        run: |
+          echo "Updating ACA..."
+
+          az containerapp update \
+            --name ${{ secrets.ACA_NAME }} \
+            --resource-group ${{ secrets.ACA_RG }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.REPO }}:latest
+
+          echo "Container App updated. Current revisions:"
+          az containerapp revision list \
+            --name ${{ secrets.ACA_NAME }} \
+            --resource-group ${{ secrets.ACA_RG }} \
+            --output table

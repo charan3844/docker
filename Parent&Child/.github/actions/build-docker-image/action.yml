@@ -1,0 +1,19 @@
+name: Build Docker image
+description: Builds the Docker image with build metadata
+
+runs:
+  using: composite
+  steps:
+    - name: Build Docker image
+      shell: bash
+      run: |
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        docker build \
+          -f MCPAgent/Dockerfile \
+          --label build_time=$BUILD_TIME \
+          --label git_sha=${{ github.sha }} \
+          -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.REPO }}:latest \
+          MCPAgent
+
+        docker images

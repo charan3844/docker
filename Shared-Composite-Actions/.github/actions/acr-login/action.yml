@@ -1,0 +1,13 @@
+name: Login to ACR
+description: Authenticates with Azure Container Registry
+
+runs:
+  using: composite
+  steps:
+    - name: Login to ACR
+      shell: bash
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+        LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query "loginServer" -o tsv)
+        echo "ACR_LOGIN_SERVER=$LOGIN_SERVER" >> $GITHUB_ENV
+        echo "ACR login successful"

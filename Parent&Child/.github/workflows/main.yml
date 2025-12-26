@@ -1,0 +1,24 @@
+name: Docker Build & Deploy - Parent Workflow
+
+# Triggers on push to main or manual trigger
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  # Parent job that calls child workflows sequentially
+  call-build-workflow:
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+
+  call-deploy-workflow:
+    needs: call-build-workflow
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write

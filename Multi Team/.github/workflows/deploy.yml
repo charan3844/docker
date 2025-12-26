@@ -1,0 +1,18 @@
+name: Team B - Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/reusable-docker-aca.yml
+    with:
+      environment: prod
+      image_tag: latest
+    secrets: inherit
