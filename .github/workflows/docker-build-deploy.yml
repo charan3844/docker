@@ -127,8 +127,6 @@ jobs:
 
             - name: Login to ACR
               uses: ./.github/actions/acr-login
-              with:
-                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
 
             - name: Cleanup Old Images
               uses: ./.github/actions/cleanup-old-images
