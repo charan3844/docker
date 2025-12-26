@@ -35,7 +35,7 @@ jobs:
     build-and-push:
         name: Build and Push Docker Image
         runs-on: ubuntu-latest
-        environment: dev
+        environment: Dev
 
         outputs:
             image-url: ${{ steps.push.outputs.acr-image-url }}
@@ -83,7 +83,7 @@ jobs:
               if: github.event_name != 'pull_request'
               uses: ./.github/actions/backup-tag
               with:
-                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
+                  acr-name: ${{ env.ACR_NAME }}
                   repo: ${{ env.IMAGE_NAME }}
                   backup-location: ./acr-backup
 
@@ -96,17 +96,12 @@ jobs:
                   image-name: ${{ env.IMAGE_NAME }}
                   image-tag: ${{ steps.set-tag.outputs.tag }}
                   build-context: ${{ env.BUILD_CONTEXT }}
-                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
 
             # 8. Push Image (non-PR only)
             - name: Push to ACR
               if: github.event_name != 'pull_request'
               id: push
               uses: ./.github/actions/push-docker-image
-              with:
-                  acr-login-server: ${{ env.ACR_LOGIN_SERVER }}
-                  image-name: ${{ env.IMAGE_NAME }}
-                  image-tag: ${{ steps.set-tag.outputs.tag }}
 
             # 9. Upload Backup Artifact (non-PR only)
             - name: Upload Backup
@@ -120,7 +115,7 @@ jobs:
     cleanup:
         name: Cleanup Old Images
         runs-on: ubuntu-latest
-        environment: dev
+        environment: Dev
         needs: build-and-push
         if: |
             github.event_name == 'workflow_dispatch' &&
